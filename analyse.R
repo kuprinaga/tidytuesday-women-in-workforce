@@ -1,7 +1,12 @@
 
-library(readr)
+
 library(tidyverse)
 library(magrittr)
+library(scales)
+library(ggrepel)
+library(glue)
+library(grid)
+library(gridExtra)
 
 source('get_data.R')
 
@@ -63,5 +68,66 @@ average_of_ratios <- jobs_gender %>%
   summarise(ratio_female_to_male = mean(wage_percent_of_male, na.rm = T)) %>%
   arrange(ratio_female_to_male)
 
+dot_chart_data <- share_by_minor_cat %>% 
+  arrange(share_of_fem_workers) %>%
+  mutate(minor_category = factor(minor_category, levels = .$minor_category),
+         color_label = ifelse(share_of_fem_workers >= 0.5, '#800080', '#1fc3aa'))
+
+closest_to_50 <- which.min(abs(dot_chart_data$share_of_fem_workers-0.5))
+
+highlights_dot_plot <- dot_chart_data[closest_to_50,]
+
+highlights_dot_plot %<>%
+  rbind(dot_chart_data %>%
+          top_n(-2, share_of_fem_workers)) %>%
+  rbind(dot_chart_data %>%
+          top_n(2, share_of_fem_workers))
+
+colors_in_data <- dot_chart_data %>% pull(color_label) %>% unique()
+gray_for_chart <- 'grey46'
+
+
+p_total <- ggplot(data = dot_chart_data ) +
+  geom_point(aes(x = share_of_fem_workers, y = minor_category),
+             color = dot_chart_data$color_label,
+             size = 5) +
+  geom_segment(aes(y = minor_category, 
+                   x = 0.5, 
+                   yend = minor_category, 
+                   xend = share_of_fem_workers), 
+               color = "black") +
+  geom_vline(xintercept = 0.5) +
+  geom_text(mapping = aes(x = 0.5, y = 20),
+            label = 'Perfect balance',
+            angle = 90,
+            vjust = -1.5,
+            color = gray_for_chart) +
+  geom_text(mapping = aes(x = 0.7, y = 23.5),
+            label = 'More women →',
+            size = 5,
+            color = colors_in_data[2]) + #make color depend on the data
+  geom_text(mapping = aes(x = 0.3, y = 23.5),
+            label = '← More men',
+            size = 5,
+            color = colors_in_data[1]) + 
+  scale_x_continuous(limits = c(0,1),
+                     labels = percent) +
+  theme_classic() +
+  theme(text = element_text(size = 16,
+                            color = gray_for_chart),
+        axis.text.y = element_text(color = dot_chart_data$color_label),
+        panel.grid.minor = element_blank()) +
+  labs(x = 'Share of female workers from total, %',
+       y = '')
+
+title_total <- textGrob(
+  label = "Which areas of work are most balanced between men & women?",
+  x = unit(0, "lines"), 
+  y = unit(0, "lines"),
+  hjust = -0.1, vjust = 0,
+  gp = gpar(fontsize = 20))
+
+p_total <- arrangeGrob(p_dot, top = title_total)
+grid.draw(p_total)
 
 
