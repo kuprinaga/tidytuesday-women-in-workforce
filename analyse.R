@@ -7,6 +7,7 @@ library(ggrepel)
 library(glue)
 library(grid)
 library(gridExtra)
+library(gganimate)
 
 source('get_data.R')
 
@@ -58,31 +59,33 @@ top_5_female_jobs <- jobs_gender %>%
 head(top_5_female_jobs)
 
 
-average_of_ratios <- jobs_gender %>% 
+salaries <- jobs_gender %>% 
   top_n(1, year) %>% # latest data
   # own calculation of ratio:
   # mutate(ratio_female_to_male = 100 * total_earnings_female / total_earnings_male) %>%
   # removed since calculation in the dataset accounts for very small sample size 
   # as some occupations have very small female values
   group_by(minor_category) %>%
-  summarise(ratio_female_to_male = mean(wage_percent_of_male, na.rm = T)) %>%
-  arrange(ratio_female_to_male)
+  summarise(ratio_female_to_male = mean(wage_percent_of_male/100, na.rm = T)) %>%
+  arrange(ratio_female_to_male) %>%
+  mutate(minor_category = factor(minor_category, levels = .$minor_category))
 
 dot_chart_data <- share_by_minor_cat %>% 
   arrange(share_of_fem_workers) %>%
   mutate(minor_category = factor(minor_category, levels = .$minor_category),
          color_label = ifelse(share_of_fem_workers >= 0.5, '#800080', '#1fc3aa'))
 
+##### UNUSED HIGHLIGHTS ######
 closest_to_50 <- which.min(abs(dot_chart_data$share_of_fem_workers-0.5))
-
 highlights_dot_plot <- dot_chart_data[closest_to_50,]
-
 highlights_dot_plot %<>%
   rbind(dot_chart_data %>%
           top_n(-2, share_of_fem_workers)) %>%
   rbind(dot_chart_data %>%
           top_n(2, share_of_fem_workers))
 
+
+####### chart 1 #####
 colors_in_data <- dot_chart_data %>% pull(color_label) %>% unique()
 gray_for_chart <- 'grey46'
 
@@ -128,6 +131,94 @@ title_total <- textGrob(
   gp = gpar(fontsize = 20))
 
 p_total <- arrangeGrob(p_dot, top = title_total)
+grid.newpage()
 grid.draw(p_total)
 
+
+###### chart 2 #######
+
+p_wages <- ggplot(data = salaries) +
+  geom_point(aes(x = ratio_female_to_male,
+                 y = minor_category),
+             size = 5,
+             color = colors_in_data[1]) +
+  geom_segment(aes(y = minor_category, 
+                   x = 0, 
+                   yend = minor_category, 
+                   xend = ratio_female_to_male), 
+               color = "black") +
+  geom_vline(xintercept = 1) +
+  geom_text(mapping = aes(x = 1.05, y = 20),
+            label = 'Equality',
+            angle = 0,
+            vjust = 0.1,
+            color = gray_for_chart) +
+  theme_classic() +
+  theme(text = element_text(size = 16,
+                            color = gray_for_chart),
+        panel.grid.minor = element_blank()) +
+  labs(x = 'Mean ratio of median salaries by occupation',
+       y = '')
+
+
+title_wages <- textGrob(
+  label = "Are women paid the same as men?",
+  x = unit(0, "lines"), 
+  y = unit(0, "lines"),
+  hjust = -0.1, vjust = 0,
+  gp = gpar(fontsize = 20))
+
+subtitle_wages <- textGrob(
+  label = 'Ratio of female to male salaries per area of work. 1 means equal wages between men and women
+  ',
+  x = unit(0, "lines"), 
+  y = unit(0, "lines"),
+  hjust = -0.1, vjust = 0,
+  gp=gpar(fontsize=15))
+
+margin <- unit(0.5, "line")
+
+
+grid.newpage()
+grid.arrange(title_wages, subtitle_wages, p_wages, 
+             heights = unit.c(grobHeight(title_wages) + 1.2*margin, 
+                              grobHeight(subtitle_wages) + margin, 
+                              unit(1,"null")))
+
+
+######### chart 3 #########
+
+salaries_over_years <- jobs_gender %>% 
+  group_by(minor_category, year) %>%
+  summarise(ratio_female_to_male = mean(wage_percent_of_male/100, na.rm = T)) %>%
+  arrange(year, ratio_female_to_male) %>% ungroup()
+  # mutate(minor_category = factor(minor_category, levels = .$minor_category))
+
+
+ggplot(data = salaries_over_years) +
+  geom_point(aes(x = ratio_female_to_male,
+                 y = minor_category),
+             size = 5,
+             color = colors_in_data[1]) + 
+  transition_time(year) + labs(title = "Year: {frame_time}")
+  geom_segment(aes(y = minor_category, 
+                   x = 0, 
+                   yend = minor_category, 
+                   xend = ratio_female_to_male), 
+               color = "black") +
+  geom_vline(xintercept = 1) +
+  geom_text(mapping = aes(x = 1.05, y = 20),
+            label = 'Equality',
+            angle = 0,
+            vjust = 0.1,
+            color = gray_for_chart) +
+  theme_classic() +
+  theme(text = element_text(size = 16,
+                            color = gray_for_chart),
+        panel.grid.minor = element_blank()) +
+  labs(x = 'Mean ratio of median salaries by occupation',
+       y = '') 
+
+  
+  
 
