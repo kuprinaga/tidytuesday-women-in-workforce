@@ -6,7 +6,6 @@ library(ggrepel)
 library(glue)
 library(grid)
 library(gridExtra)
-library(gganimate)
 
 source('get_data.R')
 

@@ -21,15 +21,14 @@ First I wanted to know *how balanced are the areas of work*, in other words, how
 
 The wage gap is crazy. I did find a few occupations where women are paid more than men, but it's so rare that it's not visible when data is aggregated by area of work.
 
-Original data: https://github.com/rfordatascience/tidytuesday/tree/master/data/2019/2019-04-16 
+Original data: https://github.com/rfordatascience/tidytuesday/tree/master/data/2019 
 
 Libraries used: 
 
 - tidyverse
-- lubridate
 - scales
-- ggthemes
 - magrittr
 - gridExtra
 - ggrepel
-- cowplot
+- glue
+- grid
