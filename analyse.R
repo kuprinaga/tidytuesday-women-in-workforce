@@ -26,14 +26,14 @@ share_by_minor_cat <- jobs_gender %>%
 
 ggplot(data = jobs_gender %>%
          top_n(1,year) %>%
-         select(major_category, 
+         select(minor_category, 
                 male= total_earnings_male, 
                 female = total_earnings_female) %>%
          mutate(male = male/1000,
                 female = female/ 1000) %>%
-         gather(gender, earnings_thousands, -major_category)) +
+         gather(gender, earnings_thousands, -minor_category)) +
   geom_density(aes(x = earnings_thousands, fill = gender)) + 
-  facet_grid( rows= vars(major_category)) +
+  facet_grid( rows= vars(minor_category)) +
   labs(title = 'Densities of median salary distributions')
 
 
@@ -50,6 +50,14 @@ top_5_female_jobs <- jobs_gender %>%
   top_n(5, percent_female) %>%
   select(occupation, percent_female)
 head(top_5_female_jobs)
+
+perc_of_occupations_pay_women_more <- jobs_gender %>%
+  mutate(measure = as.numeric(wage_percent_of_male >= 100)) %>%
+  top_n(1,year) %>%
+  summarise(total = n(),
+            pay_men_more = sum(measure, na.rm = T),
+            pay_men_more/total,
+            mean(measure, na.rm = T))å
 
 
 salaries <- jobs_gender %>% 
@@ -99,11 +107,11 @@ p_total <- ggplot(data = dot_chart_data ) +
             angle = 90,
             vjust = -1.5,
             color = gray_for_chart) +
-  geom_text(mapping = aes(x = 0.7, y = 23.2),
+  geom_text(mapping = aes(x = 0.7, y = 23.4),
             label = 'More women →',
             size = 5,
             color = colors_in_data[2]) + #make color depend on the data
-  geom_text(mapping = aes(x = 0.3, y = 23.2),
+  geom_text(mapping = aes(x = 0.3, y = 23.4),
             label = '← More men',
             size = 5,
             color = colors_in_data[1]) + 
@@ -143,14 +151,15 @@ foot_total <- textGrob(
   hjust = -0.1, vjust = 0,
   gp = gpar(fontsize = 10, fontfamily = "Arial Narrow"))
 
-p_total <- arrangeGrob(title_total, subtitle_total, p_dot, 
+p_total <- arrangeGrob(title_total, subtitle_total, p_total, 
                        heights = unit.c(grobHeight(title_total) + 1.2*margin, 
                                         grobHeight(subtitle_total) + margin, 
                                         unit(1,"null")),
                        bottom = foot_total)
 grid.newpage()
 grid.draw(p_total)
-ggsave(file="share_by_area.png", p_total, width = 13, height = 10)
+
+#ggsave(file="share_by_area.png", p_total, width = 13, height = 10)
 
 ###### chart 2 #######
 
@@ -212,7 +221,8 @@ g_wages <- arrangeGrob(title_wages, subtitle_wages, p_wages,
 
 grid.newpage()
 grid.draw(g_wages)
-ggsave(file="wages_by_area.png", g_wages, width = 13, height = 8)
+
+#ggsave(file="wages_by_area.png", g_wages, width = 13, height = 8)
 
 
 
