@@ -1,5 +1,4 @@
 
-
 library(tidyverse)
 library(magrittr)
 library(scales)
@@ -16,12 +15,6 @@ glimpse(jobs_gender)
 
 jobs_gender$major_category %>% unique()
 jobs_gender$minor_category %>% unique()
-
-
-## what are the top and bottom jobs by share of females 
-## what are the highest and lowest paid jobs for women vs men?
-## distribution of wages by category
-
 
 share_by_minor_cat <- jobs_gender %>% 
   top_n(1, year) %>% # latest data
@@ -88,6 +81,7 @@ highlights_dot_plot %<>%
 ####### chart 1 #####
 colors_in_data <- dot_chart_data %>% pull(color_label) %>% unique()
 gray_for_chart <- 'grey46'
+margin <- unit(0.5, "line")
 
 
 p_total <- ggplot(data = dot_chart_data ) +
@@ -105,11 +99,11 @@ p_total <- ggplot(data = dot_chart_data ) +
             angle = 90,
             vjust = -1.5,
             color = gray_for_chart) +
-  geom_text(mapping = aes(x = 0.7, y = 23.5),
+  geom_text(mapping = aes(x = 0.7, y = 23.2),
             label = 'More women →',
             size = 5,
             color = colors_in_data[2]) + #make color depend on the data
-  geom_text(mapping = aes(x = 0.3, y = 23.5),
+  geom_text(mapping = aes(x = 0.3, y = 23.2),
             label = '← More men',
             size = 5,
             color = colors_in_data[1]) + 
@@ -130,10 +124,33 @@ title_total <- textGrob(
   hjust = -0.1, vjust = 0,
   gp = gpar(fontsize = 20))
 
-p_total <- arrangeGrob(p_dot, top = title_total)
+
+subtitle_total <- textGrob(
+  label = "Legal work is more balanced in terms of men to women ratio compared to other areas
+  ",
+  x = unit(0, "lines"), 
+  y = unit(0, "lines"),
+  hjust = -0.1, vjust = 0,
+  gp = gpar(fontsize = 15))
+
+
+foot_total <- textGrob(
+  label = "Source: Census Bureau 'Full-Time, Year-Round Workers and Median Earnings: 2000 and 2013-2017'
+  Plot data: Mean share of female workers by occupation aggregated by work area
+  ",
+  x = unit(0, "lines"), 
+  y = unit(0, "lines"),
+  hjust = -0.1, vjust = 0,
+  gp = gpar(fontsize = 10, fontfamily = "Arial Narrow"))
+
+p_total <- arrangeGrob(title_total, subtitle_total, p_dot, 
+                       heights = unit.c(grobHeight(title_total) + 1.2*margin, 
+                                        grobHeight(subtitle_total) + margin, 
+                                        unit(1,"null")),
+                       bottom = foot_total)
 grid.newpage()
 grid.draw(p_total)
-
+ggsave(file="share_by_area.png", p_total, width = 13, height = 10)
 
 ###### chart 2 #######
 
@@ -157,7 +174,7 @@ p_wages <- ggplot(data = salaries) +
   theme(text = element_text(size = 16,
                             color = gray_for_chart),
         panel.grid.minor = element_blank()) +
-  labs(x = 'Mean ratio of median salaries by occupation',
+  labs(x = "Ratio of female to male salaries; 1 = equal pay",
        y = '')
 
 
@@ -165,60 +182,39 @@ title_wages <- textGrob(
   label = "Are women paid the same as men?",
   x = unit(0, "lines"), 
   y = unit(0, "lines"),
-  hjust = -0.1, vjust = 0,
+  hjust = -0.25, vjust = 0,
   gp = gpar(fontsize = 20))
 
 subtitle_wages <- textGrob(
-  label = 'Ratio of female to male salaries per area of work. 1 means equal wages between men and women
+  label = ' While for some specific occupations women are paid more than men, overall there are pay gaps in every work area. 
+Legal, one of the more balanced areas between employed men & women, has the highest pay gap (in available data)
   ',
   x = unit(0, "lines"), 
   y = unit(0, "lines"),
-  hjust = -0.1, vjust = 0,
+  hjust = -0.08, vjust = 0,
   gp=gpar(fontsize=15))
 
-margin <- unit(0.5, "line")
 
+foot_wages <- textGrob(
+  label = "Source: Census Bureau 'Full-Time, Year-Round Workers and Median Earnings: 2000 and 2013-2017'
+   Plot data: Mean ratio of median salaries by occupation aggregated by work area
+  ",
+  x = unit(0, "lines"), 
+  y = unit(0, "lines"),
+  hjust = -0.1, vjust = 0,
+  gp = gpar(fontsize = 10, fontfamily = "Arial Narrow"))
 
-grid.newpage()
-grid.arrange(title_wages, subtitle_wages, p_wages, 
+g_wages <- arrangeGrob(title_wages, subtitle_wages, p_wages, 
              heights = unit.c(grobHeight(title_wages) + 1.2*margin, 
                               grobHeight(subtitle_wages) + margin, 
-                              unit(1,"null")))
+                              unit(1,"null")),
+             bottom = foot_wages)
+
+grid.newpage()
+grid.draw(g_wages)
+ggsave(file="wages_by_area.png", g_wages, width = 13, height = 8)
 
 
-######### chart 3 #########
 
-salaries_over_years <- jobs_gender %>% 
-  group_by(minor_category, year) %>%
-  summarise(ratio_female_to_male = mean(wage_percent_of_male/100, na.rm = T)) %>%
-  arrange(year, ratio_female_to_male) %>% ungroup()
-  # mutate(minor_category = factor(minor_category, levels = .$minor_category))
-
-
-ggplot(data = salaries_over_years) +
-  geom_point(aes(x = ratio_female_to_male,
-                 y = minor_category),
-             size = 5,
-             color = colors_in_data[1]) + 
-  transition_time(year) + labs(title = "Year: {frame_time}")
-  geom_segment(aes(y = minor_category, 
-                   x = 0, 
-                   yend = minor_category, 
-                   xend = ratio_female_to_male), 
-               color = "black") +
-  geom_vline(xintercept = 1) +
-  geom_text(mapping = aes(x = 1.05, y = 20),
-            label = 'Equality',
-            angle = 0,
-            vjust = 0.1,
-            color = gray_for_chart) +
-  theme_classic() +
-  theme(text = element_text(size = 16,
-                            color = gray_for_chart),
-        panel.grid.minor = element_blank()) +
-  labs(x = 'Mean ratio of median salaries by occupation',
-       y = '') 
-
-  
   
 
